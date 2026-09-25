@@ -6,7 +6,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const rateLimit = require('express-rate-limit');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8085;
 const DPI = 300;
 const MAX_UPLOAD_MB = 30;
 const MIN_CUSTOM_CM = 1;

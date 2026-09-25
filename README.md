@@ -20,10 +20,10 @@ Fénykép feltöltése és átméretezése szabványos fotóméretekre (pl. 13×
 
 ```bash
 podman build -t nyomda -f Containerfile .
-podman run -d --name nyomda -p 3000:3000 nyomda
+podman run -d --name nyomda -p 8085:8085 nyomda
 ```
 
-Ezután nyisd meg: http://localhost:3000
+Ezután nyisd meg: http://localhost:8085
 
 Leállítás / eltávolítás:
 
@@ -57,7 +57,7 @@ Description=Nyomda fénykép átméretező
 [Container]
 Image=localhost/nyomda:latest
 ContainerName=nyomda
-PublishPort=3000:3000
+PublishPort=8085:8085
 AutoUpdate=registry
 
 [Service]
@@ -94,7 +94,7 @@ cd print_ready_image
 docker compose up -d --build
 ```
 
-A `compose.yaml` alapból csak `127.0.0.1:3000`-en publikálja a portot — ezt egy reverse proxy mögé kell tenni, mielőtt kívülről elérhetővé teszed (lásd lentebb).
+A `compose.yaml` alapból csak `127.0.0.1:8085`-en publikálja a portot — ezt egy reverse proxy mögé kell tenni, mielőtt kívülről elérhetővé teszed (lásd lentebb).
 
 A Docker daemon és a `restart: unless-stopped` policy gondoskodik róla, hogy a konténer szerver-újraindítás után is automatikusan elinduljon.
 
@@ -151,7 +151,7 @@ npm install
 npm start
 ```
 
-Alapértelmezett port: 3000 (a `PORT` környezeti változóval módosítható).
+Alapértelmezett port: 8085 (a `PORT` környezeti változóval módosítható).
 
 ---
 
@@ -179,10 +179,10 @@ Upload a photo and resize it to standard print sizes (e.g. 13×18 cm), ready for
 
 ```bash
 podman build -t nyomda -f Containerfile .
-podman run -d --name nyomda -p 3000:3000 nyomda
+podman run -d --name nyomda -p 8085:8085 nyomda
 ```
 
-Then open: http://localhost:3000
+Then open: http://localhost:8085
 
 Stop / remove:
 
@@ -216,7 +216,7 @@ Description=Nyomda photo resizer
 [Container]
 Image=localhost/nyomda:latest
 ContainerName=nyomda
-PublishPort=3000:3000
+PublishPort=8085:8085
 AutoUpdate=registry
 
 [Service]
@@ -253,7 +253,7 @@ cd print_ready_image
 docker compose up -d --build
 ```
 
-By default the port is published only on `127.0.0.1:3000` — put it behind a reverse proxy before exposing it publicly (see below).
+By default the port is published only on `127.0.0.1:8085` — put it behind a reverse proxy before exposing it publicly (see below).
 
 The Docker daemon plus the `restart: unless-stopped` policy make sure the container comes back up automatically after a server reboot.
 
@@ -310,4 +310,4 @@ npm install
 npm start
 ```
 
-Default port: 3000 (configurable via the `PORT` environment variable).
+Default port: 8085 (configurable via the `PORT` environment variable).
