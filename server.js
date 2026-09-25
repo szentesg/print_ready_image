@@ -126,7 +126,7 @@ app.post('/api/resize', resizeLimiter, upload.single('image'), async (req, res) 
       contentType = 'image/png';
       ext = 'png';
     } else {
-      pipeline = pipeline.jpeg({ quality: 95, chromaSubsampling: '4:4:4' });
+      pipeline = pipeline.jpeg({ quality: 100, chromaSubsampling: '4:4:4' });
     }
 
     pipeline = pipeline.withMetadata({ density: DPI });
