@@ -1,0 +1,16 @@
+{
+  "name": "nyomda",
+  "version": "1.0.0",
+  "description": "Fenykep atmeretezo szolgaltatas nyomtatashoz szabvanyos meretekben",
+  "private": true,
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.0.0",
+    "sharp": "^0.35.4"
+  }
+}

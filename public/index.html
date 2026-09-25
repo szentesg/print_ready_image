@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nyomda &ndash; Fénykép átméretező</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Fénykép átméretezése nyomtatáshoz</h1>
+      <p class="subtitle">Tölts fel egy képet, válassz szabványos méretet, és töltsd le nyomtatásra készen.</p>
+    </header>
+
+    <main>
+      <section class="card">
+        <label class="dropzone" for="fileInput" id="dropzone">
+          <input type="file" id="fileInput" accept="image/*" hidden />
+          <div id="dropzoneHint">
+            <strong>Kattints ide</strong> vagy húzd ide a képet<br />
+            <span class="muted">JPG, PNG &ndash; max 30 MB</span>
+          </div>
+          <img id="preview" alt="Előnézet" hidden />
+        </label>
+      </section>
+
+      <section class="card options" id="optionsCard" hidden>
+        <div class="field">
+          <label for="sizeSelect">Méret</label>
+          <select id="sizeSelect"></select>
+        </div>
+
+        <div class="field" id="customSizeFields" hidden>
+          <div class="custom-size-row">
+            <div class="custom-size-field">
+              <label for="customWidth">Szélesség (cm)</label>
+              <input type="number" id="customWidth" min="1" max="120" step="0.1" placeholder="pl. 13" inputmode="decimal" />
+            </div>
+            <div class="custom-size-field">
+              <label for="customHeight">Magasság (cm)</label>
+              <input type="number" id="customHeight" min="1" max="120" step="0.1" placeholder="pl. 18" inputmode="decimal" />
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Tájolás</span>
+          <div class="radio-row">
+            <label class="radio">
+              <input type="radio" name="orientation" value="portrait" checked />
+              Álló (magasabb, mint amilyen széles)
+            </label>
+            <label class="radio">
+              <input type="radio" name="orientation" value="landscape" />
+              Fekvő (szélesebb, mint amilyen magas)
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Illesztés</span>
+          <div class="radio-row">
+            <label class="radio">
+              <input type="radio" name="mode" value="crop" checked />
+              Középre vágás (kitölti a keretet, a szélek levágódnak)
+            </label>
+            <label class="radio">
+              <input type="radio" name="mode" value="stretch" />
+              Nyújtás (a teljes kép látható, torzulhat)
+            </label>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="submitBtn" type="button">Átméretezés és letöltés</button>
+          <button id="newUploadBtn" type="button" class="secondary">Új feltöltés</button>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
