@@ -8,3 +8,16 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     restart: unless-stopped
+    environment:
+      # A libvips (sharp) szálpoolja alapból a gép összes CPU magját
+      # lefoglalná; korlátozzuk, hogy egy nagy kép ne vigye el az összes CPU-t.
+      - VIPS_CONCURRENCY=2
+    # Erőforráskorlátok, hogy egy visszaélésszerű terhelés (sok/nagy kép
+    # egyidejű átméretezése) ne tudja lehúzni a teljes VPS-t. Igazítsd
+    # a szerver tényleges kapacitásához.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+          pids: 100

@@ -94,13 +94,7 @@ cd print_ready_image
 docker compose up -d --build
 ```
 
-A `compose.yaml` alapból csak `127.0.0.1:3000`-en publikálja a portot — ezt egy reverse proxy (pl. Caddy vagy nginx) mögé érdemes tenni TLS-sel, mielőtt kívülről elérhetővé teszed. Példa Caddy konfig egy domainhez:
-
-```
-nyomda.pelda-domained.hu {
-    reverse_proxy 127.0.0.1:3000
-}
-```
+A `compose.yaml` alapból csak `127.0.0.1:3000`-en publikálja a portot — ezt egy reverse proxy mögé kell tenni, mielőtt kívülről elérhetővé teszed (lásd lentebb).
 
 A Docker daemon és a `restart: unless-stopped` policy gondoskodik róla, hogy a konténer szerver-újraindítás után is automatikusan elinduljon.
 
@@ -118,6 +112,37 @@ docker compose up -d --build
 docker compose ps
 docker compose logs -f
 ```
+
+## Nyilvános kitettség: bot- és túlterhelés-védelem
+
+Mivel egy publikus, kép-feltöltő/átméretező végpont vonzza a botokat és a tömeges visszaéléseket, több védelmi réteg is be van építve:
+
+**1. Cloudflare (vagy hasonló CDN/WAF) a domain előtt** — ez a te feladatod: állítsd be a domaint Cloudflare mögé (ingyenes tier is elég), kapcsold be a Bot Fight Mode-ot, és DNS-ben csak a proxyzott (narancssárga felhő) rekordot használd.
+
+**2. nginx reverse proxy, IP-alapú rate limittel és méretkorláttal** — a `deploy/nginx.conf` egy kész, telepíthető konfig:
+- `/api/resize` végpont: 6 kérés / perc / IP (burst 3), mert ez a CPU-igényes művelet
+- minden más végpont: 60 kérés / perc / IP (burst 20)
+- egyidejű kapcsolatok korlátozása IP-nként
+- `client_max_body_size 32m` — a túl nagy feltöltés már az nginx-nél elakad
+
+Telepítés:
+```bash
+sudo apt install -y nginx
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/nyomda
+sudo sed -i 's/your-domain.example/nyomda.pelda-domained.hu/' /etc/nginx/sites-available/nyomda
+sudo ln -s /etc/nginx/sites-available/nyomda /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d nyomda.pelda-domained.hu   # TLS, ha a DNS már a szerverre mutat
+```
+
+**3. Alkalmazás szintű rate limit** — a szerver maga is korlátoz IP-nként (`express-rate-limit`), akkor is, ha valaki megkerülné az nginx-et: 20 kérés / perc / IP a `/api/resize`-on, 120 kérés / perc / IP mindenhol máshol. A limit túllépésekor `429 Too Many Requests` választ ad, `Retry-After` fejléccel. Mivel az app reverse proxy mögött fut, a `trust proxy` beállítás miatt a valós kliens IP-t (`X-Forwarded-For`) használja, nem az nginx saját címét.
+
+**4. Konténer erőforráskorlátok** — a `compose.yaml`-ban be van állítva:
+- max. 1 CPU mag és 768 MB memória a konténerre (`deploy.resources.limits`)
+- max. 100 egyidejű process/thread (`pids`)
+- `VIPS_CONCURRENCY=2` — a képfeldolgozó (libvips) szálpoolja ne tudja lefoglalni az összes magot egyetlen nagy kép feldolgozásakor
+
+Így egy visszaélésszerű terhelési hullám legrosszabb esetben is csak ennyi a konténer erőforrásait tudja felhasználni, a VPS többi szolgáltatása (és maga az SSH-elérés) nem esik ki. Igazítsd a `cpus`/`memory` értékeket a VPS tényleges kapacitásához.
 
 ## Fejlesztés helyi Node-dal
 
@@ -228,13 +253,7 @@ cd print_ready_image
 docker compose up -d --build
 ```
 
-By default the port is published only on `127.0.0.1:3000` — put it behind a reverse proxy (e.g. Caddy or nginx) with TLS before exposing it publicly. Example Caddy config for a domain:
-
-```
-photos.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
+By default the port is published only on `127.0.0.1:3000` — put it behind a reverse proxy before exposing it publicly (see below).
 
 The Docker daemon plus the `restart: unless-stopped` policy make sure the container comes back up automatically after a server reboot.
 
@@ -252,6 +271,37 @@ docker compose up -d --build
 docker compose ps
 docker compose logs -f
 ```
+
+## Public exposure: protecting against bots and overload
+
+A public photo upload/resize endpoint is exactly the kind of thing bots and abusive traffic target, so several layers of protection are built in:
+
+**1. Cloudflare (or similar CDN/WAF) in front of the domain** — this part is on you: put the domain behind Cloudflare (the free tier is enough), enable Bot Fight Mode, and only use the proxied (orange cloud) DNS record.
+
+**2. nginx reverse proxy with per-IP rate limiting and a body size cap** — `deploy/nginx.conf` is a ready-to-install config:
+- `/api/resize`: 6 requests / minute / IP (burst 3), since this is the CPU-heavy operation
+- everything else: 60 requests / minute / IP (burst 20)
+- per-IP concurrent connection limit
+- `client_max_body_size 32m` — oversized uploads are rejected at nginx already
+
+Install it:
+```bash
+sudo apt install -y nginx
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/nyomda
+sudo sed -i 's/your-domain.example/photos.example.com/' /etc/nginx/sites-available/nyomda
+sudo ln -s /etc/nginx/sites-available/nyomda /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d photos.example.com   # TLS, once DNS points at the server
+```
+
+**3. Application-level rate limiting** — the server itself also rate-limits per IP (`express-rate-limit`), so it's still protected even if nginx were bypassed: 20 requests / minute / IP on `/api/resize`, 120 requests / minute / IP everywhere else. Exceeding the limit returns `429 Too Many Requests` with a `Retry-After` header. Because the app runs behind a reverse proxy, `trust proxy` is enabled so it rate-limits by the real client IP (`X-Forwarded-For`), not nginx's own address.
+
+**4. Container resource limits** — configured in `compose.yaml`:
+- max 1 CPU core and 768 MB memory (`deploy.resources.limits`)
+- max 100 concurrent processes/threads (`pids`)
+- `VIPS_CONCURRENCY=2` — caps the image-processing library's thread pool so a single large image can't claim every core
+
+This way, even a worst-case abusive traffic spike is contained to the container's own resource budget, and the rest of the VPS (including SSH access) stays responsive. Tune the `cpus`/`memory` values to your VPS's actual capacity.
 
 ## Local development with Node
 

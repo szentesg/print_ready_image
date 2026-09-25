@@ -4,6 +4,7 @@ const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const sharp = require('sharp');
+const rateLimit = require('express-rate-limit');
 
 const PORT = process.env.PORT || 3000;
 const DPI = 300;
@@ -11,6 +12,8 @@ const MAX_UPLOAD_MB = 30;
 const MIN_CUSTOM_CM = 1;
 const MAX_CUSTOM_CM = 120;
 const CUSTOM_KEY = 'custom';
+const RESIZE_RATE_LIMIT = 20; // kérés / perc / IP a /api/resize végponton
+const GLOBAL_RATE_LIMIT = 120; // kérés / perc / IP az összes többi végponton
 
 // name -> [width_cm, height_cm]
 const SIZES = {
@@ -27,6 +30,27 @@ const SIZES = {
 };
 
 const app = express();
+
+// Reverse proxy (nginx) mögött fut, így az X-Forwarded-For fejlécből
+// kell kiolvasni a valódi kliens IP-t a rate limithez.
+app.set('trust proxy', 1);
+
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: GLOBAL_RATE_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
+const resizeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: RESIZE_RATE_LIMIT,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Túl sok átméretezési kérés érkezett. Kérlek várj egy percet, és próbáld újra.' },
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/sizes', (req, res) => {
@@ -49,7 +73,7 @@ function cmToPx(cm, dpi = DPI) {
   return Math.max(1, Math.round((cm / 2.54) * dpi));
 }
 
-app.post('/api/resize', upload.single('image'), async (req, res) => {
+app.post('/api/resize', resizeLimiter, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Nincs feltöltött kép.' });
